@@ -4,3 +4,8 @@ numpy
 matplotlib
 seaborn
 pyrebase4
+firebase-admin
+google-auth
+google-cloud-storage
+oauth2client
+requests-toolbelt
