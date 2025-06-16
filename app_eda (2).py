@@ -218,127 +218,9 @@ class EDA:
             "5. 시각화",
             "6. 상관관계 분석",
             "7. 이상치 제거",
-            "8. 로그 변환"
+            "8. 로그 변환",
+            "9.인구 통계 분석"
         ])
-
-        # --------------------- 인구 통계 분석 ---------------------
-        with tabs.append("9.인구 통계 분석"):
-            st.header("📂 Population Trends EDA")
-
-            pop_file = st.file_uploader("Upload population_trends.csv", type="csv")
-            if not pop_file:
-                st.info("Please upload the population_trends.csv file.")
-                return
-
-            df_pop = pd.read_csv(pop_file)
-
-            # 전처리
-            df_pop.replace("-", 0, inplace=True)
-            df_pop.loc[df_pop["지역"] == "세종", :] = df_pop.loc[df_pop["지역"] == "세종", :].replace("-", 0)
-            df_pop[["인구", "출생아수(명)", "사망자수(명)"]] = df_pop[["인구", "출생아수(명)", "사망자수(명)"]].apply(pd.to_numeric, errors='coerce')
-            df_pop["연도"] = pd.to_numeric(df_pop["연도"], errors='coerce')
-            df_pop.dropna(inplace=True)
-
-            sub_tabs = st.tabs(["기초 통계", "연도별 추이", "지역별 분석", "변화량 분석", "시각화"])
-
-            # 1. 기초 통계
-            with sub_tabs[0]:
-                st.subheader("📊 Basic Statistics")
-                st.text("DataFrame Info")
-                buffer = io.StringIO()
-                df_pop.info(buf=buffer)
-                st.text(buffer.getvalue())
-
-                st.subheader("Descriptive Statistics")
-                st.dataframe(df_pop.describe())
-
-                st.subheader("Missing & Duplicate Check")
-                st.write("Missing values per column:")
-                st.dataframe(df_pop.isnull().sum())
-                st.write(f"Number of duplicate rows: {df_pop.duplicated().sum()}")
-
-            # 2. 연도별 추이
-            with sub_tabs[1]:
-                st.subheader("📈 National Population Trend")
-
-                df_nat = df_pop[df_pop["지역"] == "전국"].sort_values("연도")
-                fig, ax = plt.subplots(figsize=(10, 5))
-                sns.lineplot(data=df_nat, x="연도", y="인구", marker='o', ax=ax, label="Actual")
-
-                # 인구 예측 (출생 - 사망 평균)
-                recent = df_nat.sort_values("연도").tail(3)
-                avg_net = (recent["출생아수(명)"] - recent["사망자수(명)"]).mean()
-                final_year = df_nat["연도"].max()
-                final_pop = df_nat["인구"].iloc[-1]
-                target_year = 2035
-                projected_pop = int(final_pop + avg_net * (target_year - final_year))
-
-                ax.scatter(target_year, projected_pop, color='red', label='Projected')
-                ax.text(target_year, projected_pop, f"{projected_pop:,}", color='red', ha='right')
-                ax.set_title("National Population Forecast")
-                ax.set_xlabel("Year")
-                ax.set_ylabel("Population")
-                ax.legend()
-                st.pyplot(fig)
-
-            # 3. 지역별 분석
-            with sub_tabs[2]:
-                st.subheader("📊 Regional Population Change (Last 5 Years)")
-                df_years = df_pop[df_pop["지역"] != "전국"]
-                latest_years = sorted(df_years["연도"].unique())[-5:]
-                pivot = df_years[df_years["연도"].isin(latest_years)].pivot(index="지역", columns="연도", values="인구")
-                pivot.dropna(inplace=True)
-                pivot["change"] = pivot[latest_years[-1]] - pivot[latest_years[0]]
-                pivot["rate"] = (pivot["change"] / pivot[latest_years[0]]) * 100
-                pivot_sorted = pivot.sort_values("change", ascending=False)
-
-                # 막대 그래프
-                fig1, ax1 = plt.subplots(figsize=(10, 6))
-                sns.barplot(x=pivot_sorted["change"] / 1000, y=pivot_sorted.index, ax=ax1)
-                for i, val in enumerate(pivot_sorted["change"]):
-                    ax1.text(val / 1000, i, f"{val/1000:.1f}", va='center')
-                ax1.set_title("5-Year Population Change (in thousands)")
-                ax1.set_xlabel("Change (thousands)")
-                ax1.set_ylabel("Region")
-                st.pyplot(fig1)
-
-                # 변화율 그래프
-                fig2, ax2 = plt.subplots(figsize=(10, 6))
-                sns.barplot(x=pivot_sorted["rate"], y=pivot_sorted.index, ax=ax2)
-                for i, val in enumerate(pivot_sorted["rate"]):
-                    ax2.text(val, i, f"{val:.1f}%", va='center')
-                ax2.set_title("5-Year Population Growth Rate (%)")
-                ax2.set_xlabel("Growth Rate (%)")
-                ax2.set_ylabel("Region")
-                st.pyplot(fig2)
-
-            # 4. 변화량 분석
-            with sub_tabs[3]:
-                st.subheader("📊 Top 100 Population Changes by Region-Year")
-                df_diff = df_pop[df_pop["지역"] != "전국"].sort_values(["지역", "연도"])
-                df_diff["증감"] = df_diff.groupby("지역")["인구"].diff()
-                top_changes = df_diff.dropna().sort_values("증감", ascending=False).head(100)
-
-                styled = top_changes.style.format({
-                    "인구": "{:,.0f}",
-                    "증감": "{:,.0f}"
-                }).background_gradient(subset=["증감"], cmap="RdBu", axis=0)
-
-                st.dataframe(styled)
-
-            # 5. 시각화
-            with sub_tabs[4]:
-                st.subheader("📊 Heatmap Visualization by Region-Year")
-                pivot = df_pop.pivot_table(index="지역", columns="연도", values="인구")
-                pivot = pivot.loc[~pivot.index.str.contains("전국")]
-
-                fig, ax = plt.subplots(figsize=(12, 8))
-                sns.heatmap(pivot, cmap="YlGnBu", linewidths=0.5, ax=ax)
-                ax.set_title("Population Heatmap by Region and Year")
-                ax.set_xlabel("Year")
-                ax.set_ylabel("Region")
-                st.pyplot(fig)
-
 
         # 1. 목적 & 분석 절차
         with tabs[0]:
@@ -567,6 +449,71 @@ class EDA:
                 > - 오른쪽: 로그 변환 후 분포는 훨씬 균형잡힌 형태로, 중앙값 부근에 데이터가 집중됩니다.  
                 > - 극단치의 영향이 완화되어 이후 분석·모델링 안정성이 높아집니다.
                 """)
+
+        with tabs[8]:
+            st.header("📂 Population Trends EDA")
+
+            pop_file = st.file_uploader("Upload population_trends.csv", type="csv")
+            if not pop_file:
+                st.info("Please upload the population_trends.csv file.")
+                st.stop()
+
+            df_pop = pd.read_csv(pop_file)
+
+            # 전처리
+            df_pop.replace("-", 0, inplace=True)
+            df_pop.loc[df_pop["지역"] == "세종", :] = df_pop.loc[df_pop["지역"] == "세종", :].replace("-", 0)
+            df_pop[["인구", "출생아수(명)", "사망자수(명)"]] = df_pop[["인구", "출생아수(명)", "사망자수(명)"]].apply(pd.to_numeric, errors='coerce')
+            df_pop["연도"] = pd.to_numeric(df_pop["연도"], errors='coerce')
+            df_pop.dropna(inplace=True)
+
+            sub_tabs = st.tabs(["기초 통계", "연도별 추이", "지역별 분석", "변화량 분석", "시각화"])
+
+            with sub_tabs[0]:
+                st.subheader("📊 Basic Statistics")
+                buffer = io.StringIO()
+                df_pop.info(buf=buffer)
+                st.text(buffer.getvalue())
+
+                st.subheader("Descriptive Statistics")
+                st.dataframe(df_pop.describe())
+
+                st.subheader("Missing & Duplicate Check")
+                st.write("Missing values per column:")
+                st.dataframe(df_pop.isnull().sum())
+                st.write(f"Number of duplicate rows: {df_pop.duplicated().sum()}")
+
+            with sub_tabs[1]:
+                st.subheader("📈 연도별 인구 추이")
+                pop_yearly = df_pop.groupby("연도")[["인구", "출생아수(명)", "사망자수(명)"]].sum()
+                st.line_chart(pop_yearly)
+
+            with sub_tabs[2]:
+                st.subheader("🌍 지역별 분석")
+                year_selected = st.selectbox("연도를 선택하세요", sorted(df_pop["연도"].unique()))
+                df_year = df_pop[df_pop["연도"] == year_selected]
+                st.bar_chart(df_year.set_index("지역")[["인구", "출생아수(명)", "사망자수(명)"]])
+
+            with sub_tabs[3]:
+                st.subheader("📉 변화량 분석")
+                df_diff = df_pop.sort_values(["지역", "연도"])
+                df_diff[["인구변화", "출생아수변화", "사망자수변화"]] = df_diff.groupby("지역")[["인구", "출생아수(명)", "사망자수(명)"]].diff()
+                st.write("인구 변화량 예시 (상위 10개 행)")
+                st.dataframe(df_diff[["연도", "지역", "인구변화", "출생아수변화", "사망자수변화"]].head(10))
+
+            with sub_tabs[4]:
+                st.subheader("🖼️ 시각화")
+                metric = st.selectbox("시각화할 지표를 선택하세요", ["인구", "출생아수(명)", "사망자수(명)"])
+                year_slider = st.slider("연도를 선택하세요", int(df_pop["연도"].min()), int(df_pop["연도"].max()), step=1)
+                df_vis = df_pop[df_pop["연도"] == year_slider]
+
+                fig, ax = plt.subplots(figsize=(10, 6))
+                sns.barplot(data=df_vis, x="지역", y=metric, ax=ax)
+                ax.set_title(f"{year_slider}년 지역별 {metric} 시각화")
+                st.pyplot(fig)
+
+
+        
 
 
 # ---------------------
