@@ -222,7 +222,7 @@ class EDA:
         ])
 
         # --------------------- 인구 통계 분석 ---------------------
-        with tabs.append("인구 통계 분석"):
+        with tabs.append("9.인구 통계 분석"):
             st.header("📂 Population Trends EDA")
 
             pop_file = st.file_uploader("Upload population_trends.csv", type="csv")
